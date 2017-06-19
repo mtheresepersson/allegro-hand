@@ -40,6 +40,7 @@ bool initializeRedis()
     return false;
   } else {
     std::cout << "REDIS Connection Successful.\n" << std::endl;
+  redisCommand(GLOBAL_Redis_Context, "SET %s o", ALLGERO_COMMAND.c_str());
     return true;
   }
 }
