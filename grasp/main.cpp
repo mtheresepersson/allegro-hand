@@ -5,6 +5,7 @@
 //
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>  //_getch
 #include <string.h>
@@ -13,6 +14,50 @@
 #include "rDeviceAllegroHandCANDef.h"
 #include "RockScissorsPaper.h"
 #include <BHand/BHand.h>
+
+// ============= For REDIS =================
+
+#include <hiredis/hiredis.h>
+#include <iostream>
+
+static const std::string ALLGERO_COMMAND = "allegro::command";
+
+/** Global constants for REDIS host and port. */
+static const std::string REDIS_HOST = "127.0.0.1";
+static const int REDIS_PORT = 6379;
+
+
+/** Global REDIS interface variables */
+redisContext *GLOBAL_Redis_Context;
+redisReply *GLOBAL_Redis_Reply;
+
+bool initializeRedis()
+{
+  GLOBAL_Redis_Reply = NULL;
+  GLOBAL_Redis_Context = redisConnect(REDIS_HOST.c_str(), REDIS_PORT);
+  if (GLOBAL_Redis_Context->err) {
+    std::cerr << "Error: " <<  GLOBAL_Redis_Context->errstr << std::endl;
+    return false;
+  } else {
+    std::cout << "REDIS Connection Successful.\n" << std::endl;
+    return true;
+  }
+}
+
+
+char getCommandFromRedis()
+{	
+    GLOBAL_Redis_Reply = (redisReply *) redisCommand(GLOBAL_Redis_Context,
+        "GET %s", ALLGERO_COMMAND.c_str());
+
+    char buf = 0;
+    sscanf(GLOBAL_Redis_Reply->str, "%c", &buf);
+    freeReplyObject(GLOBAL_Redis_Reply);
+	// printf("%c\n",buf);
+    return buf;
+}
+
+// =========================================
 
 typedef char    TCHAR;
 #define _T(X)   X
@@ -275,67 +320,78 @@ static void* ioThreadProc(void* inst)
 // Application main-loop. It handles the commands from rPanelManipulator and keyboard events
 void MainLoop()
 {
+
   bool bRun = true;
 
+  if(!initializeRedis()) {cout<<"Redis initialization failed";exit(1);}
+  int prev_c = 0;
   while (bRun)
     {
-      int c = Getch();
-      switch (c)
-        {
-        case 'q':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_NONE);
-	  bRun = false;
-	  break;
+      // int c = Getch();    
+      int c = getCommandFromRedis();
+      if (prev_c != c)
+      { 
+		  printf("%c\n",c);
+		  prev_c = c;
+	      switch (c)
+	        {
+	        case 'q':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_NONE);
+		  bRun = false;
+		  break;
 
-        case 'h':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_HOME);
-	  break;
+	        case 'h':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_HOME);
+		  break;
 
-        case 'r':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_READY);
-	  break;
+	        case 'r':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_READY);
+		  break;
 
-        case 'g':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_GRASP_3);
-	  break;
+	        case 'g':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_GRASP_3);
+		  break;
 
-        case 'k':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_GRASP_4);
-	  break;
+	        case 'k':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_GRASP_4);
+		  break;
 
-        case 'p':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_PINCH_IT);
-	  break;
+	        case 'p':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_PINCH_IT);
+		  break;
 
-        case 'm':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_PINCH_MT);
-	  break;
+	        case 'm':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_PINCH_MT);
+		  break;
 
-        case 'a':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_GRAVITY_COMP);
-	  break;
+	        case 'a':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_GRAVITY_COMP);
+		  break;
 
-        case 'e':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_ENVELOP);
-	  break;
+	        case 'e':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_ENVELOP);
+		  // sleep(1);
+		  break;
 
-        case 'o':
-	  if (pBHand) pBHand->SetMotionType(eMotionType_NONE);
-	  break;
+	        case 'o':
+		  if (pBHand) pBHand->SetMotionType(eMotionType_NONE);
+		  break;
 
-	case '1':
-	  MotionRock();
-	  break;
+		case '1':
+		  MotionRock();
+		  break;
 
-	case '2':
-	  MotionScissors();
-	  break;
+		case '2':
+		  MotionScissors();
+		  break;
 
-	case '3':
-	  MotionPaper();
-	  break;
+		case '3':
+		  MotionPaper();
+		  break;
 
-        }
+	        }
+      // usleep(100000);
+	    }
     }
 }
 
