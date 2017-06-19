@@ -1,13 +1,8 @@
 Allegro Hand Linux Project
 ==========================
+Adapted from https://github.com/simlabrobotics/allegro_hand_linux
 
-Download
-========
-File:Allegro hand linux.zip
-
-Git Repo
-https://github.com/simlabrobotics/allegro_hand_linux
-
+REDIS Driver: redis key "allegro::command"
 
 Build and Run: "grasp"
 ======================
@@ -54,6 +49,4 @@ bin/grasp
 8. Use keyboard command to move Allegro Hand!!!!
 
 ================================================
-If you have any questions, feel free to ask.
-
-support@simlab.co.kr
+vikranth-vikranth@stanford.edu
