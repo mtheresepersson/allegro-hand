@@ -9,6 +9,7 @@ Build and Run: "grasp"
 Note: This project is for PEAK System USB CAN chardev interface: PCAN-USB
 
 1. Download, build, and install PCAN-USB driver for Linux: libpcan
+
 http://www.peak-system.com/fileadmin/media/linux/index.htm
 
 tar -xzvf peak-linux-driver-x.x.tar.gz
@@ -17,6 +18,7 @@ make NET=NO
 sudo make install
 
 2. Download, build, and install PCAN-Basic API for Linux: libpcanbasic
+
 http://www.peak-system.com/PCAN-USB.199.0.html?&L=1
 
 tar -xzvf PCAN_Basic_Linux-x.x.x.tar.gz
@@ -25,6 +27,7 @@ make
 sudo make install
 
 3. Download, build, and install Grasping Library for Linux, "libBHand": Grasping_Library_for_Linux
+
 http://wiki.wonikrobotics.com/AllegroHandWiki/index.php/Grasping_Library_for_Linux
 
 unzip LibBHand_{32|64}.zip
