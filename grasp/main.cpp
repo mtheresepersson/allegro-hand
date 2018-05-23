@@ -80,6 +80,57 @@ AllegroHand_DeviceMemory_t vars;
 double curTime = 0.0;
 
 /////////////////////////////////////////////////////////////////////////////////////////
+// for custom pd controller
+bool custom_PD = false;
+double q_prev[MAX_DOF];
+double dq[MAX_DOF];
+double dq_filter_input[MAX_DOF];
+double dq_prev_filter_input[MAX_DOF];
+double dq_prev_prev_filter_input[MAX_DOF];
+double dq_filtered[MAX_DOF];
+double dq_prev_filtered[MAX_DOF];
+double dq_prev_prev_filtered[MAX_DOF];
+
+double kp_custom[] = {
+  1.8, 1.8, 1.8, 1.8,
+  1.8, 1.8, 1.8, 1.8,
+  1.8, 1.8, 1.8, 1.8,
+  1.8, 1.8, 1.8, 1.8
+};
+double kd_custom[] = {
+  0.15, 0.15, 0.15, 0.15,
+  0.15, 0.15, 0.15, 0.15,
+  0.15, 0.15, 0.15, 0.15,
+  0.15, 0.15, 0.15, 0.15
+};
+
+double q_pre_cube[] = {
+  0.55, 1.65, 0.4, 0.3,
+  0.15, 0.25, 0.65, 0.6,
+  -0.4, 1.55, 0.4, 0.1,
+  1.65, -0.25, 0.0, 0.8
+};
+
+double q_cube[] = {
+  0.55, 1.65, 0.4, 0.3,
+  0.15, 0.25, 0.65, 0.6,
+  -0.4, 1.55, 0.4, 0.1,
+  1.65, -0.25, 0.0, 0.8
+};
+
+enum CustomGrasp {PreCubeGrasp, CubeGrasp};
+
+CustomGrasp custom_grasp = PreCubeGrasp;
+
+// filter
+double gain = 2.419823131e+01;                              // 25 Hz
+double filter_coeffs[] = {-0.5136414053, 1.3483400678};
+// double gain = 4.020427297e+00;                                 // 75 Hz
+// double filter_coeffs[] = {-0.1774700802, 0.1825509574};
+
+unsigned long long counter = 0;
+
+/////////////////////////////////////////////////////////////////////////////////////////
 // for BHand library
 BHand* pBHand = NULL;
 double q[MAX_DOF];
@@ -160,6 +211,7 @@ void CloseCAN();
 int GetCANChannelIndex(const TCHAR* cname);
 bool CreateBHandAlgorithm();
 void DestroyBHandAlgorithm();
+void ComputeTorqueCustom();
 void ComputeTorque();
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -267,8 +319,15 @@ static void* ioThreadProc(void* inst)
 			q[i] = (double)(vars.enc_actual[i]*enc_dir[i]-32768-enc_offset[i])*(333.3/65536.0)*(3.141592/180.0);
 		      }
 
-		    // compute joint torque
-		    ComputeTorque();
+        // compute joint torque
+        if(custom_PD)
+        {
+          ComputeTorqueCustom();
+        }
+        else
+        {
+          ComputeTorque();
+        }
 
 		    // convert desired torque to desired current and PWM count
 		    for (i=0; i<MAX_DOF; i++)
@@ -332,6 +391,7 @@ void MainLoop()
       int c = getCommandFromRedis();
       if (prev_c != c)
       { 
+      custom_PD = false;
 		  printf("%c\n",c);
 		  prev_c = c;
 	      switch (c)
@@ -371,24 +431,26 @@ void MainLoop()
 
 	        case 'e':
 		  if (pBHand) pBHand->SetMotionType(eMotionType_ENVELOP);
-		  // sleep(1);
 		  break;
 
 	        case 'o':
 		  if (pBHand) pBHand->SetMotionType(eMotionType_NONE);
 		  break;
 
-		case '1':
-		  MotionRock();
-		  break;
-
-		case '2':
-		  MotionScissors();
-		  break;
-
-		case '3':
-		  MotionPaper();
-		  break;
+          case '1':
+      if(pBHand)
+      {
+        custom_PD = true;
+        custom_grasp = PreCubeGrasp;
+      }
+      break;
+          case '2':
+      if(pBHand)
+      {
+        custom_PD = true;
+        custom_grasp = CubeGrasp;
+      }
+      break;
 
 	        }
       // usleep(100000);
@@ -405,6 +467,99 @@ void ComputeTorque()
   pBHand->SetJointDesiredPosition(q_des);
   pBHand->UpdateControl(0);
   pBHand->GetJointTorque(tau_des);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// Compute control torque for each joint using custom pd controller
+void ComputeTorqueCustom()
+{
+  if (!pBHand) return;
+
+
+  // get velocity and filter
+  for (int i=0; i<MAX_DOF; i++)    
+  {
+    dq[i] = (q[i] - q_prev[i]) / delT;
+    dq_filter_input[i] = dq[i]/gain;
+    dq_filtered[i] = dq_prev_prev_filter_input[i] + 2*dq_prev_filter_input[i] + dq_filter_input[i] + filter_coeffs[0]*dq_prev_prev_filtered[i] + filter_coeffs[1]*dq_prev_filtered[i];
+  }
+
+  if(custom_grasp == PreCubeGrasp)
+  {
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      q_des[i] = q_pre_cube[i];
+    }  
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      tau_des[i] = -kp_custom[i]*(q[i]-q_des[i]) - kd_custom[i]*dq_filtered[i];
+    }
+  }
+  else if(custom_grasp == CubeGrasp)
+  {
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      q_des[i] = q_cube[i];
+    }  
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      tau_des[i] = -kp_custom[i]*(q[i]-q_des[i]) - kd_custom[i]*dq_filtered[i];
+    }
+    tau_des[0] = -1.5;
+    tau_des[5] = 1.9;
+    tau_des[8] = 1.5;
+    // tau_des[15] = 0.9;
+  }
+
+
+
+
+
+  // if(counter % 500 == 0)
+  // {
+  //   std::cout << "q : " << std::endl;
+  //   for(int i=0; i<4; i++)
+  //   {
+  //     std::cout << q[4*i] << '\t' << q[4*i+1] << '\t' << q[4*i+2] << '\t' << q[4*i+3] << '\n';
+  //   }
+  //   std::cout << std::endl;
+  //   std::cout << "q_des : " << std::endl;
+  //   for(int i=0; i<4; i++)
+  //   {
+  //     std::cout << q_des[4*i] << '\t' << q_des[4*i+1] << '\t' << q_des[4*i+2] << '\t' << q_des[4*i+3] << '\n';
+  //   }
+  //   std::cout << std::endl;
+  //   std::cout << "dq : " << std::endl;
+  //   for(int i=0; i<4; i++)
+  //   {
+  //     std::cout << dq[4*i] << '\t' << dq[4*i+1] << '\t' << dq[4*i+2] << '\t' << dq[4*i+3] << '\n';
+  //   }
+  //   std::cout << std::endl;    
+  //   std::cout << "dq filtered : " << std::endl;
+  //   for(int i=0; i<4; i++)
+  //   {
+  //     std::cout << dq_filtered[4*i] << '\t' << dq_filtered[4*i+1] << '\t' << dq_filtered[4*i+2] << '\t' << dq_filtered[4*i+3] << '\n';
+  //   }
+  //   std::cout << std::endl;
+  //   std::cout << "tau : " << std::endl;
+  //   for(int i=0; i<4; i++)
+  //   {
+  //     std::cout << tau_des[4*i] << '\t' << tau_des[4*i+1] << '\t' << tau_des[4*i+2] << '\t' << tau_des[4*i+3] << '\n';
+  //   }
+  //   std::cout << std::endl << std::endl;
+  // }
+
+  // save last iteration info for filter
+  for (int i=0; i<MAX_DOF; i++)
+  {
+    q_prev[i] = q[i];
+    dq_prev_prev_filter_input[i] = dq_prev_filter_input[i];
+    dq_prev_filter_input[i] = dq_filter_input[i];
+    dq_prev_prev_filtered[i] = dq_prev_filtered[i];
+    dq_prev_filtered[i] = dq_filtered[i];
+  }
+
+  counter++;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
