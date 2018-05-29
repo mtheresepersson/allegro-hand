@@ -111,6 +111,7 @@ double q_pre_cube[] = {
   1.65, -0.25, 0.0, 0.8
 };
 
+
 double q_cube[] = {
   0.55, 1.65, 0.4, 0.3,
   0.15, 0.25, 0.65, 0.6,
@@ -118,7 +119,42 @@ double q_cube[] = {
   1.65, -0.25, 0.0, 0.8
 };
 
-enum CustomGrasp {PreCubeGrasp, CubeGrasp};
+/*double q_pre_cube2[] = {
+  0.5, 1.2, 0.8, 0.7,
+  0.0, 0.3, 0.8, 1.5,
+  -0.5, 1.2, 0.8, 0.7,
+  1.65, 0.0, -0.1, 0.8
+};*/
+
+double q_pre_cube2[] = {
+  0.1, 0.6, 0.2, 0.3,
+  0.1, 0.6, 0.2, 0.3,
+  -0.3, 0.8, 0.8, 0.7,
+  1.65, 0.3, -0.1, 0.8
+};
+
+double q_cube2[] = {
+  0.1, 1.0, 0.5, 0.9,
+  0.1, 1.0, 0.5, 1.0,
+  0.0, 1.2, 0.8, 0.7,
+  1.7, 0.6, -0.1, 0.9
+};
+
+double q_pre_cylinder[] = {
+  0.2, 0.3, 0.7, 0.5,
+  0.0, 0.3, 0.7, 0.5,
+  -0.2, 0.3, 0.7, 0.5,
+  1.7, 0.0, 0.2, 0.6
+};
+
+double q_cylinder[] = {
+  0.2, 0.9, 1.0, 0.9,
+  0.0, 0.9, 1.0, 0.9,
+  -0.2, 0.9, 1.0, 0.9,
+  1.7, 0.3, 0.3, 1.2
+};
+
+enum CustomGrasp {PreCubeGrasp, CubeGrasp, PreCubeGrasp2, CubeGrasp2, CubeGrasp2f, PreCylinderGrasp, CylinderGrasp, CylinderGraspf};
 
 CustomGrasp custom_grasp = PreCubeGrasp;
 
@@ -451,8 +487,50 @@ void MainLoop()
         custom_grasp = CubeGrasp;
       }
       break;
+        case '3':
+      if(pBHand)
+      {
+        custom_PD = true;
+        custom_grasp = PreCubeGrasp2;
+      }
+      break;
+        case '4':
+      if(pBHand)
+      {
+        custom_PD = true;
+        custom_grasp = CubeGrasp2;
+      }
+      break;
+        case '5':
+      if(pBHand)
+      {
+        custom_PD = true;
+        custom_grasp = CubeGrasp2f;
+      }
+      break;
+        case '6':
+      if(pBHand)
+      {
+        custom_PD = true;
+        custom_grasp = PreCylinderGrasp;
+      }
+      break;
+        case '7':
+      if(pBHand)
+      {
+        custom_PD = true;
+        custom_grasp = CylinderGrasp;
+      }
+      break;
+        case '8':
+      if(pBHand)
+      {
+        custom_PD = true;
+        custom_grasp = CylinderGraspf;
+      }
+      break;
 
-	        }
+          }
       // usleep(100000);
 	    }
     }
@@ -499,16 +577,118 @@ void ComputeTorqueCustom()
   {
     for(int i=0; i<MAX_DOF; i++)
     {
-      q_des[i] = q_cube[i];
+      q_des[i] = q_pre_cube2[i];
     }  
     for(int i=0; i<MAX_DOF; i++)
     {
       tau_des[i] = -kp_custom[i]*(q[i]-q_des[i]) - kd_custom[i]*dq_filtered[i];
     }
-    tau_des[0] = -1.5;
+    /*tau_des[0] = -1.5;
     tau_des[5] = 1.9;
     tau_des[8] = 1.5;
+    tau_des[15] = 0.9;*/
+    tau_des[2] = 1.5;
+    tau_des[7] = 1.5;
+    tau_des[8] = 1.0;
+    tau_des[15] = 0.9;
+  }
+
+  else if(custom_grasp == PreCubeGrasp2)
+  {
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      q_des[i] = q_pre_cube2[i];
+    }  
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      tau_des[i] = -kp_custom[i]*(q[i]-q_des[i]) - kd_custom[i]*dq_filtered[i];
+    }
+  }
+
+  else if(custom_grasp == CubeGrasp2)
+  {
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      q_des[i] = q_cube2[i];
+    }  
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      tau_des[i] = -kp_custom[i]*(q[i]-q_des[i]) - kd_custom[i]*dq_filtered[i];
+    }
+    /*tau_des[0] = -1.5;
+    tau_des[5] = 1.9;
+    tau_des[8] = 1.5;
+    tau_des[15] = 0.9;*/
+    // tau_des[2] = 1.5;
+    // tau_des[7] = 1.5;
+    // tau_des[8] = 1.0;
     // tau_des[15] = 0.9;
+  }
+
+  else if(custom_grasp == CubeGrasp2f)
+  {
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      q_des[i] = q_cube2[i];
+    }  
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      tau_des[i] = -kp_custom[i]*(q[i]-q_des[i]) - kd_custom[i]*dq_filtered[i];
+    }
+    /*tau_des[0] = -1.5;
+    tau_des[5] = 1.9;
+    tau_des[8] = 1.5;
+    tau_des[15] = 0.9;*/
+    tau_des[1] = 1.5;
+    tau_des[5] = 1.5;
+    tau_des[8] = 0.25;
+    tau_des[14] = 1.0;
+  }
+
+  else if(custom_grasp == PreCylinderGrasp)
+  {
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      q_des[i] = q_pre_cylinder[i];
+    }  
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      tau_des[i] = -kp_custom[i]*(q[i]-q_des[i]) - kd_custom[i]*dq_filtered[i];
+    }
+  }
+
+  else if(custom_grasp == CylinderGrasp)
+  {
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      q_des[i] = q_cylinder[i];
+    }  
+    for(int i=0; i<MAX_DOF; i++)
+    {
+      tau_des[i] = -kp_custom[i]*(q[i]-q_des[i]) - kd_custom[i]*dq_filtered[i];
+    }
+    
+  }
+  else if(custom_grasp == CylinderGraspf)
+  {
+
+    tau_des[1] = 1.0;
+    tau_des[2] = 1.0;
+    tau_des[3] = 1.0;
+    tau_des[5] = 1.0;
+    tau_des[6] = 1.0;
+    tau_des[7] = 1.0;
+    tau_des[9] = 1.0;
+    tau_des[10] = 1.0;
+    tau_des[11] = 1.0;
+    tau_des[15] = 1.0;
+    // tau_des[2] = 1.0;
+    // tau_des[3] = 0.5;
+    // tau_des[6] = 1.0;
+    // tau_des[7] = 0.5;
+    // tau_des[10] = 1.0;
+    // tau_des[11] = 0.5;
+    // tau_des[15] = 1.0;    
   }
 
 
